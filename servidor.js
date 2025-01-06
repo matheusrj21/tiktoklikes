@@ -88,7 +88,7 @@ app.get('/verificar', async (req, res) => {
                 videoDuration: videoDuration,
             };
         });
-
+//
         console.log('Informações do vídeo:', videoInfo);
 
         if (!videoInfo) {
