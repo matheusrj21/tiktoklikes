@@ -37,16 +37,26 @@ app.get('/verificar', async (req, res) => {
         const pageContent = await page.content();
         console.log('HTML da página:', pageContent); // Exibe o HTML da página no console
 
-        // Obter o título da página
-        const pageTitle = await page.title();
+        // Puxar título da página via meta tag
+        const pageTitle = await page.evaluate(() => {
+            const metaTitle = document.querySelector('meta[property="og:title"]');
+            return metaTitle ? metaTitle.getAttribute('content') : 'Título não encontrado';
+        });
         console.log('Título da página:', pageTitle);
 
-        // Verificar se o vídeo ou perfil está indisponível
-        if (pageTitle.includes('404 Not Found') || pageTitle.includes('Video unavailable')) {
-            console.log('O vídeo ou perfil está indisponível.');
+        // Puxar informação de se o vídeo está disponível via meta tag
+        const videoStatus = await page.evaluate(() => {
+            const metaStatus = document.querySelector('meta[property="og:availability"]');
+            return metaStatus ? metaStatus.getAttribute('content') : 'Status não encontrado';
+        });
+        console.log('Status do vídeo:', videoStatus);
+
+        // Verificar se o vídeo está indisponível ou o perfil está privado
+        if (videoStatus === 'unavailable') {
+            console.log('O vídeo está indisponível.');
             return res.json({
                 linkTikTok,
-                message: 'O vídeo ou perfil está indisponível.',
+                message: 'O vídeo está indisponível.',
                 html: pageContent, // Incluir o código HTML da página na resposta
             });
         }
