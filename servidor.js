@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: true, // Exibir o navegador para verificar o que está sendo carregado
+        headless: false, // Exibir o navegador para verificar o que está sendo carregado
         args: ['--no-sandbox'],
     });
 
@@ -31,7 +31,7 @@ app.get('/verificar', async (req, res) => {
 
         // Aguardar o carregamento completo da página e da parte dinâmica
         await page.waitForSelector('body', { timeout: 60000 });
-        await page.waitForTimeout(5000); // Adiciona um atraso para garantir que o conteúdo dinâmico tenha tempo de carregar
+        await page.waitFor(5000); // Aguarda 5 segundos para garantir o carregamento
 
         // Obter o conteúdo HTML da página
         const pageContent = await page.content();
