@@ -1,11 +1,12 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
+const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 const corsOptions = {
-    origin: 'https://socialfastsmm.com', // Altere conforme necessário
+    origin: 'https://socialfastsmm.com',
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 };
@@ -24,43 +25,39 @@ app.get('/verificar', async (req, res) => {
     });
 
     const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36');
 
     try {
         console.log('Verificando o link:', linkTikTok);
+        await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 });
 
-        // Acessa o link com espera de carregamento completo
-        await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
+        // Aguarda seletor ou tempo adicional
+        await page.waitForSelector('.css-gcssxn-DivSideNavMask.e8agtid1', { timeout: 15000 });
 
-        // Simular um atraso de 5 segundos usando setTimeout
-        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 5000)));
-
-        // Obter o código HTML da página
         const pageContent = await page.content();
 
-        // Verificar a presença da classe específica
+        fs.writeFileSync('pagina_tiktok.html', pageContent); // Salvar o HTML para depuração
+
         const classExists = await page.evaluate(() => {
             return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
         });
 
         if (classExists) {
-            console.log('Vídeo encontrado.');
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
-                html: pageContent, // Adiciona o código HTML da página
+                html: pageContent,
             });
         } else {
-            console.log('Vídeo não encontrado ou elemento ausente.');
             res.json({
                 linkTikTok,
                 message: 'Vídeo não encontrado ou elemento ausente.',
                 exists: false,
-                html: pageContent, // Adiciona o código HTML da página
+                html: pageContent,
             });
         }
     } catch (error) {
-        console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
             message: 'Erro ao verificar o link do TikTok.',
             error: error.message,
