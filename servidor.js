@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: false, // Alterar para true se não precisar ver o navegador
+        headless: true, // Alterar para true se não precisar ver o navegador
         args: ['--no-sandbox'],
     });
 
