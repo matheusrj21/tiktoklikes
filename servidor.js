@@ -26,30 +26,31 @@ app.get('/verificar', async (req, res) => {
     const page = await browser.newPage();
 
     try {
-        console.log('Verificando o status do link:', linkTikTok);
+        console.log('Verificando o link:', linkTikTok);
+        await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        const response = await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        // Verificar a presença da classe específica
+        const classExists = await page.evaluate(() => {
+            return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
+        });
 
-        const statusCode = response.status();
-        console.log(`Status HTTP: ${statusCode}`);
-
-        if (statusCode >= 200 && statusCode < 300) {
-            return res.json({
+        if (classExists) {
+            console.log('Vídeo encontrado.');
+            res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
-                status: statusCode,
                 exists: true,
             });
         } else {
-            return res.json({
+            console.log('Vídeo não encontrado ou elemento ausente.');
+            res.json({
                 linkTikTok,
-                message: 'Página inacessível ou vídeo não encontrado.',
-                status: statusCode,
+                message: 'Vídeo não encontrado ou elemento ausente.',
                 exists: false,
             });
         }
     } catch (error) {
-        console.error('Erro ao verificar o status HTTP:', error.message);
+        console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
             message: 'Erro ao verificar o link do TikTok.',
             error: error.message,
