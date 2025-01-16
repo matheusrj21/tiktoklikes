@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: true, // Alterar para true se não precisar ver o navegador
+        headless: true,
         args: ['--no-sandbox'],
     });
 
@@ -27,56 +27,31 @@ app.get('/verificar', async (req, res) => {
 
     try {
         console.log('Verificando o link:', linkTikTok);
-        await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 }); // Espera até que todas as requisições de rede sejam concluídas
+        await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Aguardar alguns segundos para garantir que o conteúdo dinâmico carregue
-        await page.waitForTimeout(5000); // Substitui o `page.waitFor`
-
-        // Obter o conteúdo HTML completo da página
+        // Obter o código HTML da página
         const pageContent = await page.content();
 
-        // Debug: Exibe o HTML completo para verificar se todos os dados estão presentes
-        console.log('HTML Completo da Página:', pageContent);
-
-        // Buscar a descrição diretamente no HTML carregado
-        const videoDescription = await page.evaluate(() => {
-            const jsonMatch = document.documentElement.innerHTML.match(/"desc":"(.*?)"/);
-            if (jsonMatch) {
-                return jsonMatch[1]; // Retorna a descrição encontrada
-            }
-            return null; // Retorna null caso a descrição não seja encontrada
+        // Verificar a presença da classe específica
+        const classExists = await page.evaluate(() => {
+            return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
         });
 
-        // Buscar o usuário (uniqueId e nickname) no HTML carregado
-        const userInfo = await page.evaluate(() => {
-            const userMatch = document.documentElement.innerHTML.match(/"uniqueId":"(.*?)","nickname":"(.*?)"/);
-            if (userMatch) {
-                return {
-                    uniqueId: userMatch[1],
-                    nickname: userMatch[2],
-                };
-            }
-            return null; // Retorna null caso o usuário não seja encontrado
-        });
-
-        // Verificar se a descrição e o usuário foram encontrados
-        if (videoDescription && userInfo) {
-            console.log('Descrição e usuário encontrados:', videoDescription, userInfo);
+        if (classExists) {
+            console.log('Vídeo encontrado.');
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
-                description: videoDescription,
-                user: userInfo,
-                html: pageContent, // Inclui o código HTML da página na resposta
+                html: pageContent, // Adiciona o código HTML da página
             });
         } else {
-            console.log('Descrição ou usuário não encontrado.');
+            console.log('Vídeo não encontrado ou elemento ausente.');
             res.json({
                 linkTikTok,
-                message: 'Descrição ou usuário não encontrado.',
+                message: 'Vídeo não encontrado ou elemento ausente.',
                 exists: false,
-                html: pageContent, // Inclui o código HTML da página na resposta
+                html: pageContent, // Adiciona o código HTML da página
             });
         }
     } catch (error) {
