@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: true, // Exibir o navegador para facilitar a depuração
+        headless: false, // Alterar para true se não precisar ver o navegador
         args: ['--no-sandbox'],
     });
 
@@ -27,11 +27,10 @@ app.get('/verificar', async (req, res) => {
 
     try {
         console.log('Verificando o link:', linkTikTok);
-        await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 }); // Espera até que todas as requisições de rede tenham sido concluídas
+        await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 }); // Espera até que todas as requisições de rede sejam concluídas
 
-        // Aguardar o carregamento completo do conteúdo
-        await page.waitForSelector('body', { timeout: 60000 }); // Aguarda o carregamento do corpo da página
-        await page.waitFor(5000); // Espera mais 5 segundos para garantir que todo o conteúdo dinâmico tenha carregado
+        // Aguardar alguns segundos para garantir que o conteúdo dinâmico carregue
+        await page.waitForTimeout(5000); // Substitui o `page.waitFor`
 
         // Obter o conteúdo HTML completo da página
         const pageContent = await page.content();
@@ -43,9 +42,9 @@ app.get('/verificar', async (req, res) => {
         const videoDescription = await page.evaluate(() => {
             const jsonMatch = document.documentElement.innerHTML.match(/"desc":"(.*?)"/);
             if (jsonMatch) {
-                return jsonMatch[1];  // Retorna a descrição encontrada
+                return jsonMatch[1]; // Retorna a descrição encontrada
             }
-            return null;  // Retorna null caso a descrição não seja encontrada
+            return null; // Retorna null caso a descrição não seja encontrada
         });
 
         // Buscar o usuário (uniqueId e nickname) no HTML carregado
@@ -57,7 +56,7 @@ app.get('/verificar', async (req, res) => {
                     nickname: userMatch[2],
                 };
             }
-            return null;  // Retorna null caso o usuário não seja encontrado
+            return null; // Retorna null caso o usuário não seja encontrado
         });
 
         // Verificar se a descrição e o usuário foram encontrados
