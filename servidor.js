@@ -26,49 +26,34 @@ app.get('/verificar', async (req, res) => {
     const page = await browser.newPage();
 
     try {
-        console.log('Verificando o link:', linkTikTok);
-        
+        console.log('Verificando o status do link:', linkTikTok);
+
         const response = await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Verificar resposta HTTP
-        if (!response.ok() || response.status() >= 400) {
-            console.log('Página inacessível ou vídeo não existe.');
+        const statusCode = response.status();
+        console.log(`Status HTTP: ${statusCode}`);
+
+        if (statusCode >= 200 && statusCode < 300) {
             return res.json({
                 linkTikTok,
-                message: 'Página inacessível ou vídeo não encontrado.',
-                exists: false,
-            });
-        }
-
-        // Verificar mensagens de erro específicas na página
-        const videoExists = await page.evaluate(() => {
-            const errorMessage = document.body.innerText.toLowerCase();
-            return !(
-                errorMessage.includes('video not found') || 
-                errorMessage.includes('this account is private') || 
-                errorMessage.includes('o vídeo foi removido')
-            );
-        });
-
-        // Responder com base na análise da página
-        if (videoExists) {
-            console.log('Vídeo encontrado.');
-            res.json({
-                linkTikTok,
                 message: 'Vídeo encontrado.',
+                status: statusCode,
                 exists: true,
             });
         } else {
-            console.log('Vídeo não encontrado ou inacessível.');
-            res.json({
+            return res.json({
                 linkTikTok,
-                message: 'Vídeo não encontrado ou inacessível.',
+                message: 'Página inacessível ou vídeo não encontrado.',
+                status: statusCode,
                 exists: false,
             });
         }
     } catch (error) {
-        console.error('Erro:', error.message);
-        res.status(500).send('Erro ao verificar o link do TikTok.');
+        console.error('Erro ao verificar o status HTTP:', error.message);
+        res.status(500).json({
+            message: 'Erro ao verificar o link do TikTok.',
+            error: error.message,
+        });
     } finally {
         await browser.close();
     }
