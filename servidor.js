@@ -29,19 +29,34 @@ app.get('/verificar', async (req, res) => {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Extrair o título do vídeo via meta tag
-        const videoTitle = await page.evaluate(() => {
-            const metaTitle = document.querySelector('meta[property="og:title"]');
-            return metaTitle ? metaTitle.getAttribute('content') : 'Título não encontrado';
+        // Verificar se o vídeo existe pela classe
+        const videoExistsByClass = await page.evaluate(() => {
+            return !!document.querySelector('.css-704ozy-DivVideoContainer.eqrezik7');
         });
 
-        console.log('Título do vídeo:', videoTitle);
-
-        res.json({
-            linkTikTok,
-            message: 'Título do vídeo obtido com sucesso.',
-            title: videoTitle,
+        // Verificar se o vídeo existe pela meta tag
+        const videoExistsByMetaTag = await page.evaluate(() => {
+            const metaVideo = document.querySelector('meta[property="og:video"]');
+            return !!metaVideo;
         });
+
+        // Decidir mensagem com base nos resultados
+        if (videoExistsByClass || videoExistsByMetaTag) {
+            console.log('Vídeo encontrado.');
+            res.json({
+                linkTikTok,
+                message: 'Vídeo encontrado.',
+                exists: true,
+                method: videoExistsByClass ? 'Classe' : 'Meta Tag',
+            });
+        } else {
+            console.log('Vídeo não encontrado.');
+            res.json({
+                linkTikTok,
+                message: 'Vídeo não encontrado.',
+                exists: false,
+            });
+        }
     } catch (error) {
         console.error('Erro:', error.message);
         res.status(500).send('Erro ao verificar o link do TikTok.');
