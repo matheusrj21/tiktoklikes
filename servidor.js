@@ -31,33 +31,33 @@ app.get('/verificar', async (req, res) => {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 });
 
-        // Aguarda seletor ou tempo adicional
-        await page.waitForSelector('.css-gcssxn-DivSideNavMask.e8agtid1', { timeout: 15000 });
+        // Aguarda o carregamento do HTML
+        await page.waitForSelector('body', { timeout: 15000 });
 
-        const pageContent = await page.content();
-
-        fs.writeFileSync('pagina_tiktok.html', pageContent); // Salvar o HTML para depuração
-
-        const classExists = await page.evaluate(() => {
-            return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
+        // Verifica se o seletor com o nome do usuário existe e extrai o nome
+        const userName = await page.evaluate(() => {
+            const userElement = document.querySelector('span.css-1s16qmh-SpanUniqueId.e1ymawm011');
+            return userElement ? userElement.textContent : null;
         });
 
-        if (classExists) {
+        if (userName) {
+            console.log(`Vídeo encontrado. Usuário: ${userName}`);
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
-                html: pageContent,
+                user: userName,
             });
         } else {
+            console.log('Vídeo não encontrado.');
             res.json({
                 linkTikTok,
-                message: 'Vídeo não encontrado ou elemento ausente.',
+                message: 'Vídeo não encontrado.',
                 exists: false,
-                html: pageContent,
             });
         }
     } catch (error) {
+        console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
             message: 'Erro ao verificar o link do TikTok.',
             error: error.message,
