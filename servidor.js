@@ -32,24 +32,31 @@ app.get('/verificar', async (req, res) => {
         // Obter o código HTML da página
         const pageContent = await page.content();
 
-        // Verificar a presença da classe específica
-        const classExists = await page.evaluate(() => {
-            return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
+        // Buscar informações do usuário (uniqueId e nickname)
+        const userInfo = await page.evaluate(() => {
+            const userId = document.querySelector('[data-e2e="user-id"]') || {};
+            const nickname = document.querySelector('[data-e2e="nickname"]') || {};
+            return {
+                uniqueId: userId ? userId.textContent : null,
+                nickname: nickname ? nickname.textContent : null
+            };
         });
 
-        if (classExists) {
+        // Verificar se o vídeo está disponível com base na presença do usuário
+        if (userInfo.uniqueId && userInfo.nickname) {
             console.log('Vídeo encontrado.');
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
+                user: userInfo,
                 html: pageContent, // Adiciona o código HTML da página
             });
         } else {
-            console.log('Vídeo não encontrado ou elemento ausente.');
+            console.log('Vídeo não encontrado ou informações do usuário ausentes.');
             res.json({
                 linkTikTok,
-                message: 'Vídeo não encontrado ou elemento ausente.',
+                message: 'Vídeo não encontrado ou informações do usuário ausentes.',
                 exists: false,
                 html: pageContent, // Adiciona o código HTML da página
             });
