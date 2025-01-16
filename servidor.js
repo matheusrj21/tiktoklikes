@@ -27,33 +27,42 @@ app.get('/verificar', async (req, res) => {
 
     try {
         console.log('Verificando o link:', linkTikTok);
-        await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        
+        const response = await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Verificar se o vídeo existe pela classe
-        const videoExistsByClass = await page.evaluate(() => {
-            return !!document.querySelector('.css-12kupwv-DivContentContainer.ege8lhx2');
+        // Verificar resposta HTTP
+        if (!response.ok() || response.status() >= 400) {
+            console.log('Página inacessível ou vídeo não existe.');
+            return res.json({
+                linkTikTok,
+                message: 'Página inacessível ou vídeo não encontrado.',
+                exists: false,
+            });
+        }
+
+        // Verificar mensagens de erro específicas na página
+        const videoExists = await page.evaluate(() => {
+            const errorMessage = document.body.innerText.toLowerCase();
+            return !(
+                errorMessage.includes('video not found') || 
+                errorMessage.includes('this account is private') || 
+                errorMessage.includes('o vídeo foi removido')
+            );
         });
 
-        // Verificar se o vídeo existe pela meta tag
-        const videoExistsByMetaTag = await page.evaluate(() => {
-            const metaVideo = document.querySelector('meta[property="og:video"]');
-            return !!metaVideo;
-        });
-
-        // Decidir mensagem com base nos resultados
-        if (videoExistsByClass || videoExistsByMetaTag) {
+        // Responder com base na análise da página
+        if (videoExists) {
             console.log('Vídeo encontrado.');
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
-                method: videoExistsByClass ? 'Classe' : 'Meta Tag',
             });
         } else {
-            console.log('Vídeo não encontrado.');
+            console.log('Vídeo não encontrado ou inacessível.');
             res.json({
                 linkTikTok,
-                message: 'Vídeo não encontrado.',
+                message: 'Vídeo não encontrado ou inacessível.',
                 exists: false,
             });
         }
