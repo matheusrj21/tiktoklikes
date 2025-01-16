@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: true, // Definido como false para ver o navegador (opcional)
         args: ['--no-sandbox'],
     });
 
@@ -29,8 +29,16 @@ app.get('/verificar', async (req, res) => {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Aguarda o carregamento do HTML
+        // Aguarda o carregamento completo do HTML
         await page.waitForSelector('body', { timeout: 60000 });
+
+        // Ajuste para garantir que o conteúdo da página seja totalmente carregado
+        await page.evaluate(() => {
+            return new Promise((resolve) => {
+                // Espera a janela inteira carregar (totalmente carregado)
+                window.onload = resolve;
+            });
+        });
 
         // Obter o conteúdo HTML da página
         const pageContent = await page.content();
