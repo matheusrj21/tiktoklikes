@@ -32,18 +32,29 @@ app.get('/verificar', async (req, res) => {
         // Obter o código HTML da página
         const pageContent = await page.content();
 
-        // Buscar informações do usuário (uniqueId e nickname)
+        // Buscar dados JSON no conteúdo da página (uniqueId e nickname)
         const userInfo = await page.evaluate(() => {
-            const userId = document.querySelector('[data-e2e="user-id"]') || {};
-            const nickname = document.querySelector('[data-e2e="nickname"]') || {};
-            return {
-                uniqueId: userId ? userId.textContent : null,
-                nickname: nickname ? nickname.textContent : null
-            };
+            const scripts = Array.from(document.querySelectorAll('script'));
+            let jsonData = null;
+
+            // Itera pelos scripts para encontrar o JSON com uniqueId e nickname
+            scripts.forEach(script => {
+                if (script.textContent.includes('"uniqueId":')) {
+                    const jsonText = script.textContent.match(/{.*"uniqueId":".*"/);
+                    if (jsonText) {
+                        jsonData = JSON.parse(jsonText[0]);
+                    }
+                }
+            });
+
+            return jsonData ? {
+                uniqueId: jsonData.uniqueId,
+                nickname: jsonData.nickname
+            } : null;
         });
 
-        // Verificar se o vídeo está disponível com base na presença do usuário
-        if (userInfo.uniqueId && userInfo.nickname) {
+        // Verificar se as informações do usuário existem
+        if (userInfo && userInfo.uniqueId && userInfo.nickname) {
             console.log('Vídeo encontrado.');
             res.json({
                 linkTikTok,
