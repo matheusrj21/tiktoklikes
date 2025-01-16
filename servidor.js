@@ -31,7 +31,7 @@ app.get('/verificar', async (req, res) => {
 
         // Verificar se o vídeo existe pela classe
         const videoExistsByClass = await page.evaluate(() => {
-            return !!document.querySelector('.css-704ozy-DivVideoContainer.eqrezik7');
+            return !!document.querySelector('.css-12kupwv-DivContentContainer.ege8lhx2');
         });
 
         // Verificar se o vídeo existe pela meta tag
