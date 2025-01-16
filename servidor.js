@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: true, // Definido como false para ver o navegador (opcional)
+        headless: true, // Exibir o navegador para verificar o que está sendo carregado
         args: ['--no-sandbox'],
     });
 
@@ -27,23 +27,19 @@ app.get('/verificar', async (req, res) => {
 
     try {
         console.log('Verificando o link:', linkTikTok);
-        await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 }); // Aguardar até que todas as requisições de rede terminem
 
-        // Aguarda o carregamento completo do HTML
+        // Aguardar o carregamento completo da página e da parte dinâmica
         await page.waitForSelector('body', { timeout: 60000 });
-
-        // Ajuste para garantir que o conteúdo da página seja totalmente carregado
-        await page.evaluate(() => {
-            return new Promise((resolve) => {
-                // Espera a janela inteira carregar (totalmente carregado)
-                window.onload = resolve;
-            });
-        });
+        await page.waitForTimeout(5000); // Adiciona um atraso para garantir que o conteúdo dinâmico tenha tempo de carregar
 
         // Obter o conteúdo HTML da página
         const pageContent = await page.content();
 
-        // Buscar a descrição no JSON ou conteúdo JavaScript carregado na página
+        // Debug: Exibe o HTML completo para verificar se todos os dados estão presentes
+        console.log('HTML Completo da Página:', pageContent);
+
+        // Buscar a descrição diretamente no HTML carregado
         const videoDescription = await page.evaluate(() => {
             const jsonMatch = document.documentElement.innerHTML.match(/"desc":"(.*?)"/);
             if (jsonMatch) {
@@ -52,7 +48,7 @@ app.get('/verificar', async (req, res) => {
             return null;  // Retorna null caso a descrição não seja encontrada
         });
 
-        // Buscar o usuário (uniqueId e nickname)
+        // Buscar o usuário (uniqueId e nickname) no HTML carregado
         const userInfo = await page.evaluate(() => {
             const userMatch = document.documentElement.innerHTML.match(/"uniqueId":"(.*?)","nickname":"(.*?)"/);
             if (userMatch) {
