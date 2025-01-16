@@ -29,28 +29,23 @@ app.get('/verificar', async (req, res) => {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Aguarda o carregamento de um seletor específico para garantir que o HTML completo tenha sido carregado
+        // Aguarda o carregamento do HTML
         await page.waitForSelector('body', { timeout: 60000 });
 
-        // Obter o código HTML completo da página
+        // Obter o conteúdo HTML da página
         const pageContent = await page.content();
 
-        // Buscar a descrição diretamente no HTML
+        // Buscar a descrição no JSON ou conteúdo JavaScript carregado na página
         const videoDescription = await page.evaluate(() => {
-            const pageText = document.documentElement.innerText;
-
-            // Procurar pela string "desc": seguido da descrição do vídeo
-            const descMatch = pageText.match(/"desc":"(.*?)"/);
-
-            // Retornar a descrição se encontrada
-            if (descMatch) {
-                return descMatch[1];
-            } else {
-                return null;
+            // Procurar um objeto JSON contendo a descrição
+            const jsonMatch = document.documentElement.innerHTML.match(/"desc":"(.*?)"/);
+            
+            if (jsonMatch) {
+                return jsonMatch[1];  // Retorna a descrição encontrada
             }
+            return null;  // Retorna null caso a descrição não seja encontrada
         });
 
-        // Verificar se a descrição foi encontrada
         if (videoDescription) {
             console.log('Descrição encontrada:', videoDescription);
             res.json({
@@ -58,7 +53,7 @@ app.get('/verificar', async (req, res) => {
                 message: 'Vídeo encontrado.',
                 exists: true,
                 description: videoDescription,
-                html: pageContent, // Adiciona o código HTML da página
+                html: pageContent, // Inclui o código HTML da página na resposta
             });
         } else {
             console.log('Descrição não encontrada.');
@@ -66,7 +61,7 @@ app.get('/verificar', async (req, res) => {
                 linkTikTok,
                 message: 'Descrição não encontrada.',
                 exists: false,
-                html: pageContent, // Adiciona o código HTML da página
+                html: pageContent, // Inclui o código HTML da página na resposta
             });
         }
     } catch (error) {
