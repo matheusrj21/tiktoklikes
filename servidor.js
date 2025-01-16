@@ -40,9 +40,15 @@ app.get('/verificar', async (req, res) => {
             // Itera pelos scripts para encontrar o JSON com uniqueId e nickname
             scripts.forEach(script => {
                 if (script.textContent.includes('"uniqueId":')) {
-                    const jsonText = script.textContent.match(/{.*"uniqueId":".*"/);
-                    if (jsonText) {
-                        jsonData = JSON.parse(jsonText[0]);
+                    try {
+                        // Encontrar o JSON dentro do script
+                        const jsonText = script.textContent.match(/{.*"uniqueId":".*"/);
+                        if (jsonText) {
+                            // Remover caracteres problemáticos e tentar fazer o parse
+                            jsonData = JSON.parse(jsonText[0].replace(/,\s*$/, '')); // Remove possíveis vírgulas extras
+                        }
+                    } catch (error) {
+                        console.error('Erro ao parsear JSON:', error);
                     }
                 }
             });
