@@ -31,8 +31,8 @@ app.get('/verificar', async (req, res) => {
         // Acessa o link com espera de carregamento completo
         await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Aguarda um período adicional para o conteúdo dinâmico
-        await page.waitForTimeout(5000);
+        // Simular um atraso de 5 segundos usando setTimeout
+        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 5000)));
 
         // Obter o código HTML da página
         const pageContent = await page.content();
