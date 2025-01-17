@@ -31,33 +31,33 @@ app.get('/verificar', async (req, res) => {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 });
 
-        // Aguarda o carregamento do HTML
-        await page.waitForSelector('body', { timeout: 15000 });
+        // Aguarda seletor ou tempo adicional
+        await page.waitForSelector('.css-gcssxn-DivSideNavMask.e8agtid1', { timeout: 15000 });
 
-        // Verifica se o seletor com o nome do usuário existe e extrai o nome
-        const userName = await page.evaluate(() => {
-            const userElement = document.querySelector('span.css-1s16qmh-SpanUniqueId.e1ymawm011');
-            return userElement ? userElement.textContent : null;
+        const pageContent = await page.content();
+
+        fs.writeFileSync('pagina_tiktok.html', pageContent); // Salvar o HTML para depuração
+
+        const classExists = await page.evaluate(() => {
+            return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
         });
 
-        if (userName) {
-            console.log(`Vídeo encontrado. Usuário: ${userName}`);
+        if (classExists) {
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
-                user: userName,
+                html: pageContent,
             });
         } else {
-            console.log('Vídeo não encontrado.');
             res.json({
                 linkTikTok,
-                message: 'Vídeo não encontrado.',
+                message: 'Vídeo não encontrado ou elemento ausente.',
                 exists: false,
+                html: pageContent,
             });
         }
     } catch (error) {
-        console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
             message: 'Erro ao verificar o link do TikTok.',
             error: error.message,
@@ -69,4 +69,4 @@ app.get('/verificar', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
+}); 
