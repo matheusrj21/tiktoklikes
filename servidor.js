@@ -1,12 +1,11 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
-const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 const corsOptions = {
-    origin: 'https://socialfastsmm.com',
+    origin: 'https://socialfastsmm.com', // Altere conforme necessário
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 };
@@ -25,39 +24,48 @@ app.get('/verificar', async (req, res) => {
     });
 
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36');
 
     try {
         console.log('Verificando o link:', linkTikTok);
-        await page.goto(linkTikTok, { waitUntil: 'networkidle0', timeout: 60000 });
+        await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Aguarda seletor ou tempo adicional
-        await page.waitForSelector('.css-gcssxn-DivSideNavMask.e8agtid1', { timeout: 15000 });
+        // Aguarda o carregamento do HTML
+        await page.waitForSelector('body', { timeout: 60000 });
 
+        // Obter o conteúdo HTML da página
         const pageContent = await page.content();
 
-        fs.writeFileSync('pagina_tiktok.html', pageContent); // Salvar o HTML para depuração
-
-        const classExists = await page.evaluate(() => {
-            return !!document.querySelector('.css-gcssxn-DivSideNavMask.e8agtid1');
+        // Buscar a descrição no JSON ou conteúdo JavaScript carregado na página
+        const videoDescription = await page.evaluate(() => {
+            // Procurar um objeto JSON contendo a descrição
+            const jsonMatch = document.documentElement.innerHTML.match(/"desc":"(.*?)"/);
+            
+            if (jsonMatch) {
+                return jsonMatch[1];  // Retorna a descrição encontrada
+            }
+            return null;  // Retorna null caso a descrição não seja encontrada
         });
 
-        if (classExists) {
+        if (videoDescription) {
+            console.log('Descrição encontrada:', videoDescription);
             res.json({
                 linkTikTok,
                 message: 'Vídeo encontrado.',
                 exists: true,
-                html: pageContent,
+                description: videoDescription,
+                html: pageContent, // Inclui o código HTML da página na resposta
             });
         } else {
+            console.log('Descrição não encontrada.');
             res.json({
                 linkTikTok,
-                message: 'Vídeo não encontrado ou elemento ausente.',
+                message: 'Descrição não encontrada.',
                 exists: false,
-                html: pageContent,
+                html: pageContent, // Inclui o código HTML da página na resposta
             });
         }
     } catch (error) {
+        console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
             message: 'Erro ao verificar o link do TikTok.',
             error: error.message,
