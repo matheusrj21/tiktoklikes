@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: 'new', // Utiliza o novo modo headless para melhor compatibilidade
+        headless: 'new', // Utilize "new" para versões mais recentes ou remova se não for necessário
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
@@ -33,7 +33,11 @@ app.get('/verificar', async (req, res) => {
         await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
 
         // Aguarda alguns segundos para que scripts dinâmicos sejam executados
-        await page.waitForTimeout(5000); // Ajuste o tempo se necessário
+        if (typeof page.waitForTimeout === 'function') {
+            await page.waitForTimeout(5000);
+        } else {
+            await page.waitFor(5000);
+        }
 
         // Caso o conteúdo seja carregado conforme o scroll, simula um scroll até o fim da página:
         await autoScroll(page);
@@ -70,7 +74,7 @@ async function autoScroll(page) {
                 const scrollHeight = document.body.scrollHeight;
                 window.scrollBy(0, distance);
                 totalHeight += distance;
-                if(totalHeight >= scrollHeight){
+                if (totalHeight >= scrollHeight) {
                     clearInterval(timer);
                     resolve();
                 }
