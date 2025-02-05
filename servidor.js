@@ -19,7 +19,7 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: true, // Utilize "new" se sua versão suportar: headless: 'new'
+        headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
@@ -42,12 +42,8 @@ app.get('/verificar', async (req, res) => {
 
         // Verifica se existe um elemento com as classes desejadas
         const isLinkCorrect = await page.evaluate(() => {
-            // O seletor abaixo busca um elemento que possua ambas as classes
             return Boolean(document.querySelector('.css-1zpj2q-ImgAvatar.e1e9er4e1'));
         });
-
-        // Extrai o HTML completo da página (opcional, se precisar debugar)
-        const pageContent = await page.evaluate(() => document.documentElement.outerHTML);
 
         if (isLinkCorrect) {
             console.log('Link está correto.');
@@ -55,7 +51,6 @@ app.get('/verificar', async (req, res) => {
                 linkTikTok,
                 message: "Link está correto.",
                 correct: true,
-                html: pageContent,
             });
         } else {
             console.log('Link está incorreto.');
@@ -63,7 +58,6 @@ app.get('/verificar', async (req, res) => {
                 linkTikTok,
                 message: "Link está incorreto.",
                 correct: false,
-                html: pageContent,
             });
         }
     } catch (error) {
