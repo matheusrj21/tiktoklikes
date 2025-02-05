@@ -19,28 +19,36 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: 'new', // Melhor compatibilidade com versões recentes do Puppeteer
+        headless: 'new', // Utiliza o novo modo headless para melhor compatibilidade
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     const page = await browser.newPage();
 
+    // Define um User Agent para simular um navegador real
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
+
     try {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Obtém TODO o código HTML da página, incluindo classes e textos
+        // Aguarda alguns segundos para que scripts dinâmicos sejam executados
+        await page.waitForTimeout(5000); // Ajuste o tempo se necessário
+
+        // Caso o conteúdo seja carregado conforme o scroll, simula um scroll até o fim da página:
+        await autoScroll(page);
+
+        // Extrai o HTML completo da página
         const pageContent = await page.evaluate(() => document.documentElement.outerHTML);
 
-        console.log('Código HTML extraído com sucesso.');
+        console.log('HTML extraído com sucesso.');
 
         res.json({
             linkTikTok,
             message: 'HTML da página extraído com sucesso.',
             exists: true,
-            html: pageContent, // Retorna o HTML completo
+            html: pageContent,
         });
-
     } catch (error) {
         console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
@@ -51,6 +59,25 @@ app.get('/verificar', async (req, res) => {
         await browser.close();
     }
 });
+
+// Função para simular scroll até o final da página
+async function autoScroll(page) {
+    await page.evaluate(async () => {
+        await new Promise((resolve) => {
+            let totalHeight = 0;
+            const distance = 100;
+            const timer = setInterval(() => {
+                const scrollHeight = document.body.scrollHeight;
+                window.scrollBy(0, distance);
+                totalHeight += distance;
+                if(totalHeight >= scrollHeight){
+                    clearInterval(timer);
+                    resolve();
+                }
+            }, 100);
+        });
+    });
+}
 
 app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
