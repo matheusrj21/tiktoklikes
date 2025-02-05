@@ -32,14 +32,10 @@ app.get('/verificar', async (req, res) => {
         console.log('Verificando o link:', linkTikTok);
         await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Aguarda alguns segundos para que scripts dinâmicos sejam executados
-        if (typeof page.waitForTimeout === 'function') {
-            await page.waitForTimeout(5000);
-        } else {
-            await page.waitFor(5000);
-        }
+        // Aguarda 5 segundos para que os scripts dinâmicos sejam executados
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
-        // Caso o conteúdo seja carregado conforme o scroll, simula um scroll até o fim da página:
+        // Se necessário, simula um scroll até o final da página para carregar conteúdo adicional
         await autoScroll(page);
 
         // Extrai o HTML completo da página
@@ -74,7 +70,7 @@ async function autoScroll(page) {
                 const scrollHeight = document.body.scrollHeight;
                 window.scrollBy(0, distance);
                 totalHeight += distance;
-                if (totalHeight >= scrollHeight) {
+                if(totalHeight >= scrollHeight){
                     clearInterval(timer);
                     resolve();
                 }
