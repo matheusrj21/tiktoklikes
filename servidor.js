@@ -19,14 +19,16 @@ app.get('/verificar', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({
-        headless: 'new', // Utilize "new" para versões mais recentes ou remova se não for necessário
+        headless: true, // Utilize "new" se sua versão suportar: headless: 'new'
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     const page = await browser.newPage();
 
     // Define um User Agent para simular um navegador real
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
+    await page.setUserAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    );
 
     try {
         console.log('Verificando o link:', linkTikTok);
@@ -35,20 +37,35 @@ app.get('/verificar', async (req, res) => {
         // Aguarda 5 segundos para que os scripts dinâmicos sejam executados
         await new Promise(resolve => setTimeout(resolve, 5000));
 
-        // Se necessário, simula um scroll até o final da página para carregar conteúdo adicional
+        // Caso o conteúdo seja carregado conforme o scroll, simula um scroll até o fim da página:
         await autoScroll(page);
 
-        // Extrai o HTML completo da página
+        // Verifica se existe um elemento com as classes desejadas
+        const isLinkCorrect = await page.evaluate(() => {
+            // O seletor abaixo busca um elemento que possua ambas as classes
+            return Boolean(document.querySelector('.css-1zpj2q-ImgAvatar.e1e9er4e1'));
+        });
+
+        // Extrai o HTML completo da página (opcional, se precisar debugar)
         const pageContent = await page.evaluate(() => document.documentElement.outerHTML);
 
-        console.log('HTML extraído com sucesso.');
-
-        res.json({
-            linkTikTok,
-            message: 'HTML da página extraído com sucesso.',
-            exists: true,
-            html: pageContent,
-        });
+        if (isLinkCorrect) {
+            console.log('Link está correto.');
+            res.json({
+                linkTikTok,
+                message: "Link está correto.",
+                correct: true,
+                html: pageContent,
+            });
+        } else {
+            console.log('Link está incorreto.');
+            res.json({
+                linkTikTok,
+                message: "Link está incorreto.",
+                correct: false,
+                html: pageContent,
+            });
+        }
     } catch (error) {
         console.error('Erro ao verificar o link do TikTok:', error.message);
         res.status(500).json({
@@ -70,7 +87,7 @@ async function autoScroll(page) {
                 const scrollHeight = document.body.scrollHeight;
                 window.scrollBy(0, distance);
                 totalHeight += distance;
-                if(totalHeight >= scrollHeight){
+                if (totalHeight >= scrollHeight) {
                     clearInterval(timer);
                     resolve();
                 }
