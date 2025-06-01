@@ -5,7 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const corsOptions = {
-  origin: 'https://socialfastsmm.com', // Ajuste conforme necessário
+  origin: 'https://socialfastsmm.com', // Ajuste conforme necessário.
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
