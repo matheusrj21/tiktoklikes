@@ -5,10 +5,15 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const corsOptions = {
-  origin: ['https://socialfastsmm.com', 'https://redirecionarsocialfast.shop'],
+  origin: [
+    'https://socialfastsmm.com',
+    'https://redirecionarsocialfast.shop',
+    'https://lojasocialfast.com'
+  ],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
+
 
 app.use(cors(corsOptions));
 
