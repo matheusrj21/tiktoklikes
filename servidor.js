@@ -14,7 +14,6 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
-
 app.use(cors(corsOptions));
 
 app.get('/verificar', async (req, res) => {
@@ -30,7 +29,6 @@ app.get('/verificar', async (req, res) => {
 
   const page = await browser.newPage();
 
-  // Define um User Agent para simular um navegador real
   await page.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
   );
@@ -39,43 +37,42 @@ app.get('/verificar', async (req, res) => {
     console.log('Verificando o link:', linkTikTok);
     await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
 
-    // Aguarda 5 segundos para que os scripts dinâmicos sejam executados
     await new Promise(resolve => setTimeout(resolve, 5000));
-
-    // Caso o conteúdo seja carregado conforme o scroll, simula um scroll até o fim da página:
     await autoScroll(page);
 
-    // Obtém o conteúdo HTML completo da página
     const pageContent = await page.content();
 
-    // Verifica se existe um elemento com as classes desejadas
+    // Printar no console
+    console.log("==== INÍCIO DO HTML CAPTURADO ====");
+    console.log(pageContent);
+    console.log("==== FIM DO HTML CAPTURADO ====");
+
     const isLinkCorrect = await page.evaluate(() => {
       return Boolean(document.querySelector('.css-1zpj2q-ImgAvatar.e1e9er4e1'));
     });
 
     if (isLinkCorrect) {
       console.log('Link está correto.');
-      res.json({
-        linkTikTok,
-        message: "Link está correto.",
-        correct: true,
-        html: pageContent
-      });
+      // Exibir o HTML direto no navegador (com resultado destacado)
+      res.send(`
+        <h2 style="color:green">✅ Link está correto.</h2>
+        <hr/>
+        ${pageContent}
+      `);
     } else {
       console.log('Link está incorreto.');
-      res.json({
-        linkTikTok,
-        message: "Link está incorreto.",
-        correct: false,
-        html: pageContent
-      });
+      res.send(`
+        <h2 style="color:red">❌ Link está incorreto.</h2>
+        <hr/>
+        ${pageContent}
+      `);
     }
   } catch (error) {
     console.error('Erro ao verificar o link do TikTok:', error.message);
-    res.status(500).json({
-      message: 'Erro ao verificar o link do TikTok.',
-      error: error.message,
-    });
+    res.status(500).send(`
+      <h2 style="color:red">Erro ao verificar o link do TikTok</h2>
+      <p>${error.message}</p>
+    `);
   } finally {
     await browser.close();
   }
