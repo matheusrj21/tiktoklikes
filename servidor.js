@@ -53,7 +53,7 @@ app.get('/verificar', async (req, res) => {
     // Aguarda o DOM estabilizar (compatível)
     await sleep(1500);
 
-    // Tenta esperar por alguma meta/canonical (não falha se não achar)
+    // Tenta esperar por alguma meta/canonical (não falha se não acharr)
     try {
       await page.waitForSelector('head link[rel="canonical"], head meta[property="og:site_name"]', { timeout: 3000 });
     } catch (_) {}
