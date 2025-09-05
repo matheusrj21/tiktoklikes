@@ -1,6 +1,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
@@ -18,60 +19,99 @@ app.use(cors(corsOptions));
 
 app.get('/verificar', async (req, res) => {
   const linkTikTok = req.query.link_tiktok;
+  const debug = String(req.query.debug || '').toLowerCase() === '1';
+
   if (!linkTikTok) {
-    return res.status(400).send('Parâmetro "link_tiktok" não fornecido.');
+    return res.status(400).json({ message: 'Parâmetro "link_tiktok" não fornecido.' });
   }
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled'
+    ],
   });
 
-  const page = await browser.newPage();
-
-  // Define um User Agent para simular um navegador real
-  await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-  );
-
   try {
-    console.log('Verificando o link:', linkTikTok);
-    await page.goto(linkTikTok, { waitUntil: 'networkidle2', timeout: 60000 });
+    const page = await browser.newPage();
 
-    // Aguarda 5 segundos para que os scripts dinâmicos sejam executados
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    // Caso o conteúdo seja carregado conforme o scroll, simula um scroll até o fim da página:
-    await autoScroll(page);
-
-    // Obtém o conteúdo HTML completo da página
-    const pageContent = await page.content();
-
-    // Verifica se existe um elemento com as classes desejadas
-    const isLinkCorrect = await page.evaluate(() => {
-      return Boolean(document.querySelector('.css-1zpj2q-ImgAvatar.e1e9er4e1'));
+    // reduz chance de bloqueio básico
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    );
+    await page.setExtraHTTPHeaders({ 'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' });
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
     });
 
-    if (isLinkCorrect) {
-      console.log('Link está correto.');
-      res.json({
-        linkTikTok,
-        message: "Link está correto.",
-        correct: true,
-        html: pageContent
-      });
-    } else {
-      console.log('Link está incorreto.');
-      res.json({
-        linkTikTok,
-        message: "Link está incorreto.",
-        correct: false,
-        html: pageContent
-      });
+    const resp = await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(1500); // tempo para metas/canonical
+
+    const finalUrl = page.url();
+    const status = resp ? resp.status() : 0;
+
+    const info = await page.evaluate(() => {
+      const q = (s) => document.querySelector(s);
+      const canonical = q('link[rel="canonical"]')?.href || '';
+      const ogSite = q('meta[property="og:site_name"]')?.content || '';
+      const ogType = q('meta[property="og:type"]')?.content || '';
+      const ogVideo = q('meta[property="og:video"]')?.content || q('meta[name="og:video"]')?.content || '';
+      const title = document.title || '';
+      const hasNext = !!q('script#__NEXT_DATA__') || !!q('script#SIGI_STATE');
+      const bodyText = (document.body && document.body.innerText) ? document.body.innerText : '';
+      const captchaTextHit = /Drag the puzzle piece|Slide to verify|puzzle/i.test(bodyText);
+      return { canonical, ogSite, ogType, ogVideo, title, hasNext, captchaTextHit };
+    });
+
+    const isTikTokBrand =
+      /tiktok/i.test(info.ogSite) ||
+      /:\/\/([^\/]+\.)?tiktok\.com/i.test(info.canonical || finalUrl) ||
+      /tiktok/i.test(info.title) ||
+      info.hasNext;
+
+    const isVideoOrProfile =
+      /\/video\//i.test(info.canonical) ||
+      /\/@/i.test(info.canonical) ||
+      /video/i.test(info.ogType) ||
+      Boolean(info.ogVideo);
+
+    const captchaDetected = info.captchaTextHit === true;
+
+    // Consideramos "correto" se os sinais confirmam TikTok + vídeo/perfil,
+    // mesmo que exista CAPTCHA (você pode mudar essa lógica se preferir).
+    const correct = (status && status < 400) && isTikTokBrand && isVideoOrProfile;
+
+    const payload = {
+      linkTikTok,
+      finalUrl,
+      correct,
+      captchaDetected,
+      message: correct
+        ? (captchaDetected ? 'Link parece correto (CAPTCHA detectado na página).' : 'Link está correto.')
+        : (captchaDetected ? 'Não foi possível confirmar (CAPTCHA detectado).' : 'Link está incorreto.'),
+    };
+
+    if (debug) {
+      payload.debug = {
+        httpStatus: status,
+        signals: {
+          ogSite: info.ogSite,
+          ogType: info.ogType,
+          ogVideo: Boolean(info.ogVideo),
+          canonical: info.canonical,
+          title: info.title,
+          hasNextData: info.hasNext,
+        }
+      };
     }
+
+    return res.json(payload);
+
   } catch (error) {
     console.error('Erro ao verificar o link do TikTok:', error.message);
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Erro ao verificar o link do TikTok.',
       error: error.message,
     });
@@ -79,25 +119,6 @@ app.get('/verificar', async (req, res) => {
     await browser.close();
   }
 });
-
-// Função para simular scroll até o final da página
-async function autoScroll(page) {
-  await page.evaluate(async () => {
-    await new Promise((resolve) => {
-      let totalHeight = 0;
-      const distance = 100;
-      const timer = setInterval(() => {
-        const scrollHeight = document.body.scrollHeight;
-        window.scrollBy(0, distance);
-        totalHeight += distance;
-        if (totalHeight >= scrollHeight) {
-          clearInterval(timer);
-          resolve();
-        }
-      }, 100);
-    });
-  });
-}
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
