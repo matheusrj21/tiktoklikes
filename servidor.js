@@ -17,6 +17,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// sleep compatível com qualquer versão
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 app.get('/verificar', async (req, res) => {
   const linkTikTok = req.query.link_tiktok;
   const debug = String(req.query.debug || '').toLowerCase() === '1';
@@ -37,7 +40,6 @@ app.get('/verificar', async (req, res) => {
   try {
     const page = await browser.newPage();
 
-    // reduz chance de bloqueio básico
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
     );
@@ -47,7 +49,14 @@ app.get('/verificar', async (req, res) => {
     });
 
     const resp = await page.goto(linkTikTok, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(1500); // tempo para metas/canonical
+
+    // Aguarda o DOM estabilizar (compatível)
+    await sleep(1500);
+
+    // Tenta esperar por alguma meta/canonical (não falha se não achar)
+    try {
+      await page.waitForSelector('head link[rel="canonical"], head meta[property="og:site_name"]', { timeout: 3000 });
+    } catch (_) {}
 
     const finalUrl = page.url();
     const status = resp ? resp.status() : 0;
@@ -79,8 +88,6 @@ app.get('/verificar', async (req, res) => {
 
     const captchaDetected = info.captchaTextHit === true;
 
-    // Consideramos "correto" se os sinais confirmam TikTok + vídeo/perfil,
-    // mesmo que exista CAPTCHA (você pode mudar essa lógica se preferir).
     const correct = (status && status < 400) && isTikTokBrand && isVideoOrProfile;
 
     const payload = {
